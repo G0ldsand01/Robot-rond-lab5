@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contrôle du Robot - Lab 5</title>
+    <link rel="stylesheet" href="styles/style.css" />
+    <script src="script/script.js"></script>
+  </head>
+  <body>
+    <h1>Contrôle du Robot - Lab 5</h1>
+    <p id="message"> ... En attente de commandes ... </p>
+    
+
+    <!-- Control Buttons -->
+    <div class="control-container">
+      <div class="empty"></div>
+      <button onclick="onClickAvancer()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M9 18v-6H5l7-7 7 7h-4v6H9z" />
+        </svg>
+      </button>
+      <div class="empty"></div>
+      <button onclick="onClickGauche()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M18 15h-6v4l-7-7 7-7v4h6v6z" />
+        </svg>
+      </button>
+      <button onclick="onClickStop()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m15 9-6 6" />
+          <path
+            d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"
+          />
+          <path d="m9 9 6 6" />
+        </svg>
+      </button>
+      <button onclick="onClickDroite()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M6 9h6V5l7 7-7 7v-4H6V9z" />
+        </svg>
+      </button>
+      <div class="empty"></div>
+      <button onclick="onClickReculer()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M15 6v6h4l-7 7-7-7h4V6h6z" />
+        </svg>
+      </button>
+      <div class="empty"></div>
+    </div>
+
+    <!-- OpenCV Toggle -->
+    <p>OpenCV:</p>
+    <label class="switch">
+      <input type="checkbox" id="openCvSwitch"/>
+      <span class="slider"></span>
+    </label>
+    <div class="live-camera">
+        <h2>Caméra en direct du robot</h2>
+        <img
+          id="live-camera"
+          src="http://192.168.4.163:5000/camera"
+          alt="Caméra du robot"
+        />
+      </div>
+  </body>
+</html>

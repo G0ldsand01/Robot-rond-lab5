@@ -1,0 +1,10 @@
+{
+  "moteurs":[
+    {"isDirGauche":true, "isVitGauche":true, "isDirDroite":true, "isVitDroite":true},
+    {"isDirGauche":true, "isVitGauche":true, "isDirDroite":true, "isVitDroite":true},
+    {"isDirGauche":false, "isVitGauche":true, "isDirDroite":true, "isVitDroite":true},
+    {"isDirGauche":false, "isVitGauche":true, "isDirDroite":true, "isVitDroite":true},
+    {"isDirGauche":false, "isVitGauche":true, "isDirDroite":false, "isVitDroite":true},
+    {"isDirGauche":false, "isVitGauche":true, "isDirDroite":false, "isVitDroite":true}
+  ]
+}
