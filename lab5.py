@@ -82,7 +82,7 @@ def enArriere():
 
 def detect_red_ball(frame):
     """
-    Detects a red ball in an image using OpenCV.
+    Detects a Green ball in an image using OpenCV.
 
     Args:
         frame: The input image frame.
@@ -94,18 +94,15 @@ def detect_red_ball(frame):
             - The radius of the detected ball if found, otherwise None.
     """
 
-    # Define the lower and upper bounds for red color in HSV
-    lower_red = np.array([0, 200, 200])
-    upper_red = np.array([10, 255, 255])
+    # Define the lower and upper bounds for Green color in HSV
+    lower_green = np.array([10, 250, 100])
+    upper_green = np.array([50, 120, 0])
 
     # Convert the image from BGR to HSV color space
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Create a mask for the red color range
-    mask = cv2.inRange(hsv, lower_red, upper_red)
-
-    # Apply Gaussian blur to reduce noise
-    mask = cv2.GaussianBlur(mask, (9, 9), 3, 3)
+    mask = cv2.inRange(hsv, lower_green, upper_green)
 
     # Find contours in the masked image
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
