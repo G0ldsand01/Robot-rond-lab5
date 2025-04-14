@@ -42,7 +42,7 @@ h1 {
 .live-camera {
   margin-bottom: 20px;
   text-align: center;
-  display: block; /* Ensure default display is explicitly set */
+  display: none;
 }
 .live-camera img {
   width: 100%;

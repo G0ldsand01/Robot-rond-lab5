@@ -1,25 +1,25 @@
 function onClickAvancer() {
-    let moteurs = new Moteurs(false, false, true, false); // Forward
+    const moteurs = new Moteurs(false, false, true, false); // Forward
     postMoteurs(moteurs);
 }
 
 function onClickReculer() {
-    let moteurs = new Moteurs(false, false, false, true); // Reverse
+    const moteurs = new Moteurs(false, false, false, true); // Reverse
     postMoteurs(moteurs);
 }
 
 function onClickGauche() {
-    let moteurs = new Moteurs(true, false, false, false); // Left
+    const moteurs = new Moteurs(true, false, false, false); // Left
     postMoteurs(moteurs);
 }
 
 function onClickDroite() {
-    let moteurs = new Moteurs(false, true, false, false); // Right
+    const moteurs = new Moteurs(false, true, false, false); // Right
     postMoteurs(moteurs);
 }
 
 function onClickStop() {
-  let moteurs = new Moteurs(false, false, false, false);
+  const moteurs = new Moteurs(false, false, false, false);
   postMoteurs(moteurs);
 }
 
@@ -38,22 +38,24 @@ class Moteurs {
 }
 
 function postMoteurs(moteurs) {
-    fetch("http://192.168.4.163:5000/moteurs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(moteurs),
-    })
-    .then(response => {
-        if (response.ok) {
-            console.log("Command sent successfully");
-        } else {
-            console.error("Error sending command:", response.status, response.statusText);
-        }
-    })
-    .catch(error => {
-        console.error("Network error or invalid URL:", error);
-    });
+  fetch("http://192.168.4.163:5000/moteurs", {  // <-- updated IP here
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(moteurs),
+  })
+  .then(response => {
+      if (response.ok) {
+          console.log("Command sent successfully:", moteurs);
+      } else {
+          console.error("Error sending command:", response.status, response.statusText);
+      }
+  })
+  .catch(error => {
+      console.error("Network error or invalid URL:", error);
+  });
 }
+
+
 
 // Handle OpenCV toggle
 function onToggleOpenCv() {

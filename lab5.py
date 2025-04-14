@@ -1,29 +1,29 @@
 import cv2
 import numpy as np
 import time
+import threading
 import RPi.GPIO as GPIO
 import flask
 import flask_cors
-from flask import request
-import os
+from flask import request, render_template
 import sqlite3
+import atexit
+from datetime import datetime
 
-conn = sqlite3.connect('moteurs.db')
-cursor = conn.cursor()
-cursor.execute('''CREATE TABLE IF NOT EXISTS moteurs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    isDirGauche INTEGER,
-    isVitGauche INTEGER,
-    isDirDroite INTEGER,
-    isVitDroite INTEGER
-    )''')
-conn.commit()
-conn.close()
+def log_action(action, details=""):
+    conn = sqlite3.connect('moteurs.db')
+    cursor = conn.cursor()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("INSERT INTO logs (timestamp, action, details) VALUES (?, ?, ?)", (timestamp, action, details))
+    conn.commit()
+    conn.close()
 
+
+# === Flask App Setup ===
 app = flask.Flask(__name__)
-cors = flask_cors.CORS(app)
+flask_cors.CORS(app)
 
-#Moteurs
+# === GPIO Setup ===
 GPIO_PIN_VIT_GAUCHE = 27
 GPIO_PIN_VIT_DROITE = 23
 GPIO_PIN_DIR_GAUCHE = 17
@@ -34,169 +34,186 @@ GPIO.setup(GPIO_PIN_VIT_DROITE, GPIO.OUT)
 GPIO.setup(GPIO_PIN_DIR_GAUCHE, GPIO.OUT)
 GPIO.setup(GPIO_PIN_DIR_DROITE, GPIO.OUT)
 
+#=== Motor Commands ===
 def stop():
     GPIO.output(GPIO_PIN_VIT_GAUCHE, GPIO.LOW)
     GPIO.output(GPIO_PIN_VIT_DROITE, GPIO.LOW)
     GPIO.output(GPIO_PIN_DIR_GAUCHE, GPIO.LOW)
     GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.LOW)
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (0, 0, 0, 0))
-    GPIO.cleanup()
 
-
-def gauche():
-    print('Gauche!')
+def enAvant():
+    print('En avant!')
     GPIO.output(GPIO_PIN_VIT_GAUCHE, GPIO.LOW)
     GPIO.output(GPIO_PIN_VIT_DROITE, GPIO.HIGH)
     GPIO.output(GPIO_PIN_DIR_GAUCHE, GPIO.LOW)
     GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.HIGH)
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (0, 1, 0, 1))
-    time.sleep(0.01)
 
-def droite():
-    print('Droite!')
+def enArriere():
+    print('En arrière!')
     GPIO.output(GPIO_PIN_VIT_GAUCHE, GPIO.HIGH)
-    GPIO.output(GPIO_PIN_VIT_DROITE, GPIO.LOW)
+    GPIO.output(GPIO_PIN_VIT_DROITE, GPIO.HIGH)
     GPIO.output(GPIO_PIN_DIR_GAUCHE, GPIO.HIGH)
-    GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.LOW)
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (1, 0, 1, 0))
-    time.sleep(0.01)
+    GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.HIGH)
 
-def enAvant():
-    print('En avant!')
+def gauche():
+    print('Gauche!')
     GPIO.output(GPIO_PIN_VIT_GAUCHE, GPIO.HIGH)
     GPIO.output(GPIO_PIN_VIT_DROITE, GPIO.HIGH)
     GPIO.output(GPIO_PIN_DIR_GAUCHE, GPIO.LOW)
     GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.LOW)
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (1, 1, 0, 0))
-    time.sleep(0.1)
-
-
-def enArriere():
-    print('En arriere!')
+   
+def droite():
+    print('Droite!')
     GPIO.output(GPIO_PIN_VIT_GAUCHE, GPIO.LOW)
     GPIO.output(GPIO_PIN_VIT_DROITE, GPIO.LOW)
     GPIO.output(GPIO_PIN_DIR_GAUCHE, GPIO.HIGH)
-    GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.LOW)
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (0, 0, 1, 1))
-    time.sleep(1)
+    GPIO.output(GPIO_PIN_DIR_DROITE, GPIO.HIGH)
+   
+# === SQLite Setup ===
+def init_db():
+    conn = sqlite3.connect('moteurs.db')
+    cursor = conn.cursor()
 
-def detect_red_ball(frame):
-    """
-    Detects a Green ball in an image using OpenCV.
+    cursor.execute('''CREATE TABLE IF NOT EXISTS moteurs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        isLeftPressed INTEGER,
+        isRightPressed INTEGER,
+        isForwardPressed INTEGER,
+        isReversePressed INTEGER
+    )''')
 
-    Args:
-        frame: The input image frame.
+    cursor.execute('''CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT,
+        action TEXT,
+        details TEXT
+    )''')
 
-    Returns:
-        A tuple containing:
-            - The center coordinates of the detected ball (x, y) if found, 
-              otherwise None.
-            - The radius of the detected ball if found, otherwise None.
-    """
-
-    # Define the lower and upper bounds for Green color in HSV
-    lower_green = np.array([10, 250, 100])
-    upper_green = np.array([50, 120, 0])
-
-    # Convert the image from BGR to HSV color space
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    # Create a mask for the red color range
-    mask = cv2.inRange(hsv, lower_green, upper_green)
-
-    # Find contours in the masked image
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Find the largest contour (assuming it's the ball)
-    if len(contours) > 0:
-        largest_contour = max(contours, key=cv2.contourArea)
-
-        # Fit a circle to the contour
-        (x, y), radius = cv2.minEnclosingCircle(largest_contour)
-        center = (int(x), int(y))
-        radius = int(radius)
-
-        return center, radius
-    else:
-        return None, None
-
-# Example usage with a video file
-cap = cv2.VideoCapture(0)
-
-previous = "nothing"
-lostCount = 0
-
-@app.route('/moteurs' , methods=['POST', 'GET'])
+    conn.commit()
+    conn.close()
+init_db()
+@app.route('/trajectoire', methods=['POST'])
+def trajectoire(data):
+    conn = sqlite3.connect('moteurs.db')
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO moteurs (isLeftPressed, isRightPressed, isForwardPressed, isReversePressed) VALUES (?, ?, ?, ?)",
+                   (int(data["isLeftPressed"]), int(data["isRightPressed"]), int(data["isForwardPressed"]), int(data["isReversePressed"])))
+    trajectoire =request.get_json()
+    cursor.execute("INSERT INTO moteurs (id, dirGauche, vitGauche, dirDroite, vitDroite) VALUES (?, ?, ?, ?, ?)",
+                   (int(trajectoire["id"]), int(trajectoire["dirGauche"]), int(trajectoire["vitGauche"]), int(trajectoire["dirDroite"]), int(trajectoire["vitDroite"])))
+    conn.commit()
+    return "Trajectoire received"
+@app.route('/')
+def index():
+    return render_template('index.html')
+# === Flask Routes ===
+@app.route('/moteurs', methods=['POST'])
 def post_moteurs():
-    moteurs = request.json
-    print(moteurs)
-    if moteurs["isDirGauche"]:
-        gauche()
-    elif moteurs["isDirDroite"]:
-        droite()
-    elif moteurs["isVitGauche"]:
-        enAvant()
-    elif moteurs["isVitDroite"]:
+    moteurs = request.get_json()
+    print("Moteurs received:", moteurs)  
+
+    # Now make sure your motor logic uses these exact keys!
+    if moteurs["isForwardPressed"]:
+        enAvant()  # Replace with your actual motor function
+        # cursor.execute("INSERT INTO trajectoire (id, dirGauche, vitGauche, dirDroite, vitDroite) VALUES (?, ?, ?, ?, ?)", 
+        #            (int(moteurs["id"]), int(moteurs["dirGauche"]), int(moteurs["vitGauche"]), int(moteurs["dirDroite"]), int(moteurs["vitDroite"])))
+        # conn.commit()
+    elif moteurs["isReversePressed"]:
         enArriere()
-    stop()
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (moteurs["isDirGauche"], moteurs["isVitGauche"], moteurs["isDirDroite"], moteurs["isVitDroite"]))
-    return "OK"
+        # cursor.execute("INSERT INTO trajectoire (id, dirGauche, vitGauche, dirDroite, vitDroite) VALUES (?, ?, ?, ?, ?)", 
+        #            (int(moteurs["id"]), int(moteurs["dirGauche"]), int(moteurs["vitGauche"]), int(moteurs["dirDroite"]), int(moteurs["vitDroite"])))
+        # conn.commit()
+    elif moteurs["isLeftPressed"]:
+        gauche()
+        # cursor.execute("INSERT INTO trajectoire (id, dirGauche, vitGauche, dirDroite, vitDroite) VALUES (?, ?, ?, ?, ?)", 
+        #            (int(moteurs["id"]), int(moteurs["dirGauche"]), int(moteurs["vitGauche"]), int(moteurs["dirDroite"]), int(moteurs["vitDroite"])))
+        # conn.commit()
+    elif moteurs["isRightPressed"]:
+        droite()
+        # cursor.execute("INSERT INTO trajectoire (id, dirGauche, vitGauche, dirDroite, vitDroite) VALUES (?, ?, ?, ?, ?)", 
+        #            (int(moteurs["id"]), int(moteurs["dirGauche"]), int(moteurs["vitGauche"]), int(moteurs["dirDroite"]), int(moteurs["vitDroite"])))
+        # conn.commit()
+    # cursor.execute("INSERT INTO trajectoire (id, dirGauche, vitGauche, dirDroite, vitDroite) VALUES (?, ?, ?, ?, ?)",
+    #                (int(moteurs["id"]), int(moteurs["dirGauche"]), int(moteurs["vitGauche"]), int(moteurs["dirDroite"]), int(moteurs["vitDroite"])))
+    else :
+        stop()
+    # conn.commit()
+    # conn.close()
+
+    return "Command received"
+    
 
 @app.route('/camera')
 def get_camera():
-    # Capture frame-by-frame from the camera
     ret, frame = cap.read()
     if not ret:
-        return "Failed to capture image", 500
+        return "Camera error", 500
 
-    # Encode the frame as JPEG
     _, buffer = cv2.imencode('.jpg', frame)
     response = flask.make_response(buffer.tobytes())
     response.headers.set('Content-Type', 'image/jpeg')
     return response
 
+# === OpenCV Ball Detection Thread ===
+def detect_red_ball(frame):
+    lower_green = np.array([10, 250, 100])
+    upper_green = np.array([50, 120, 0])
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, lower_green, upper_green)
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-while(True):
-    # Capture frame-by-frame
-    ret, frame = cap.read()
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        (x, y), radius = cv2.minEnclosingCircle(largest)
+        return (int(x), int(y)), int(radius)
+    return None, None
 
-    if not ret:
-        break
+def open_cv_loop():
+    previous = "nothing"
+    lostCount = 0
 
-    # Detect the red ball
-    center, radius = detect_red_ball(frame)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            continue
 
-    # Draw a circle around the detected ball if found
-    if center is not None:
-        cv2.circle(frame, center, radius, (0, 255, 0), 2)
-        print(center)
-        lostCount = 0
-        if(center[0]>300):
+        center, radius = detect_red_ball(frame)
+        if center:
+            cv2.circle(frame, center, radius, (0, 255, 0), 2)
+            if center[0] > 300:
+                droite()
+                previous = "droite"
+            elif center[0] < 200:
+                gauche()
+                previous = "gauche"
+            enAvant()
+            lostCount = 0
+        elif previous == "gauche" and lostCount < 100:
             droite()
-            previous = "droite"
-        elif(center[0]<200):
+            lostCount += 1
+        elif previous == "droite" and lostCount < 100:
             gauche()
-            previous = "gauche"
-        enAvant()
-    elif previous == "gauche" and lostCount < 100:
-        droite()
-        lostCount+=1
-    elif previous == "droite" and lostCount < 100:
-        gauche()
-        lostCount+=1
-    cursor.execute("INSERT INTO moteurs VALUES (NULL, ?, ?, ?, ?)", (0, 0, 0, 0))  # Replace with appropriate values or logic
+            lostCount += 1
+        stop()
+        time.sleep(0.05)
+
+# === Camera Capture ===
+cap = cv2.VideoCapture(0)
+
+# === Graceful Shutdown ===
+def cleanup():
+    print("Cleaning up...")
     stop()
+    GPIO.cleanup()
+    cap.release()
+    cv2.destroyAllWindows()
 
+atexit.register(cleanup)
 
-    # Display the resulting frame
-    cv2.imshow('frame', frame)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# When everything done, release the capture
-cap.release()
-cv2.destroyAllWindows()
-GPIO.cleanup()
-conn.commit()
-conn.close()
+# === Start Flask + OpenCV in Thread ===
+if __name__ == '__main__':
+    thread = threading.Thread(target=open_cv_loop, daemon=True)
+    thread.start()
+    app.run(host='0.0.0.0', port=5000, debug=True)
+    GPIO.cleanup()
+    conn.close()
