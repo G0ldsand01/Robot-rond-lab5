@@ -84,14 +84,20 @@ function onToggleOpenCv() {
   const openCvSwitch = document.getElementById("openCvSwitch");
   const liveCamera = document.getElementsByClassName("live-camera")[0];
   
-  if (openCvSwitch && liveCamera) {
-    if (openCvSwitch.checked) {
-      liveCamera.style.display = "block";
-    } else {
-      liveCamera.style.display = "none";
-    }
+  if (!openCvSwitch) {
+    console.error("Element with ID 'openCvSwitch' not found.");
+    return;
+  }
+  
+  if (!liveCamera) {
+    console.error("Element with class 'live-camera' not found.");
+    return;
+  }
+  
+  if (openCvSwitch.checked) {
+    liveCamera.style.display = "block";
   } else {
-    console.error("Element with ID 'openCvSwitch' or class 'live-camera' not found.");
+    liveCamera.style.display = "none";
   }
 }
 class Trajectoire {

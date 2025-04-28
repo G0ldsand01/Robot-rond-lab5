@@ -119,15 +119,11 @@
       </label>
      </div>
   
-    <p>OpenCV:</p>
-    
-    <div class="live-camera">
-        <h2>Caméra en direct du robot</h2>
-        <img
-          id="live-camera"
-          src="http://192.168.4.163:5000/camera"
-          alt="Caméra du robot"
-        />
-      </div>
+     <!-- OpenCV Toggle -->
+     <p>OpenCV:</p>
+     <label class="switch">
+       <input type="checkbox" id="openCvSwitch" onchange="onToggleOpenCv()" />
+       <span class="slider"></span>
+     </label>
   </body>
 </html>
