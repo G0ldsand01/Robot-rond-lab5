@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 body {
   background-color: black;
   color: white;
@@ -5,54 +9,121 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  min-height: 100vh;
   margin: 0;
+  padding: 10px;
   font-family: Arial, sans-serif;
 }
+
 h1 {
   margin-bottom: 20px;
+  text-align: center;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
 }
+
 .control-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  align-items: center;
-  justify-items: center;
+  grid-template-rows: repeat(3, auto);
+  gap: 15px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
 }
+
 .control-container button {
   background-color: rgb(250, 250, 232);
   color: rgb(34, 34, 34);
   border: none;
-  padding: 20px 25px;
-  font-size: 16px;
+  padding: clamp(15px, 3vw, 25px);
+  font-size: clamp(14px, 3vw, 16px);
   cursor: pointer;
   border-radius: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
   transition: all 0.3s ease;
+  height: 100%;
+  min-height: 60px;
 }
+
 .control-container button:hover {
   background-color: rgb(23, 23, 23);
   color: #f5f5f5;
 }
+
+.control-container button:focus {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
 .empty {
   visibility: hidden;
 }
+
 .live-camera {
-  margin-bottom: 20px;
+  margin: 20px 0;
   text-align: center;
-  display: none;
-}
-.live-camera img {
+  display: block;
   width: 100%;
   max-width: 600px;
+}
+
+.live-camera img {
+  width: 100%;
   height: auto;
   border-radius: 10px;
 }
+
 svg {
-  width: 32px;
-  height: 32px;
+  width: clamp(24px, 6vw, 32px);
+  height: clamp(24px, 6vw, 32px);
+}
+
+.camera-toggle {
+  margin: 15px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.trajets {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  max-width: 600px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  padding: 0 10px;
+}
+
+.trajets button {
+  background-color: rgb(250, 250, 232);
+  color: rgb(34, 34, 34);
+  border: none;
+  padding: 15px;
+  font-size: clamp(14px, 3vw, 16px);
+  cursor: pointer;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.trajets button:hover {
+  background-color: rgb(23, 23, 23);
+  color: #f5f5f5;
+}
+
+.trajets button:focus {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
+.trajets button:hover {
+  background-color: rgb(23, 23, 23);
+  color: #f5f5f5;
 }
 
 .switch {
@@ -62,36 +133,12 @@ svg {
   height: 34px;
 }
 
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
 
-.slider {
+.camera-toggle input {
+  padding: 2rem;
   position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 34px;
+  opacity: 100%;
 }
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
 input:checked + .slider {
   background-color: #2196f3;
 }
@@ -102,4 +149,65 @@ input:focus + .slider {
 
 input:checked + .slider:before {
   transform: translateX(26px);
+}
+
+/* Container for both controls and camera */
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .main-container {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .control-section {
+    flex: 0 0 350px;
+  }
+  
+  .camera-section {
+    flex: 1 1 400px;
+  }
+  
+  .trajets {
+    margin-top: 1rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .control-container {
+    margin-bottom: 20px;
+  }
+  
+  body {
+    padding: 20px 10px;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-height: 700px) and (orientation: landscape) {
+  body {
+    padding: 10px;
+    justify-content: flex-start;
+  }
+  
+  .control-container {
+    gap: 10px;
+  }
+  
+  .control-container button {
+    min-height: 45px;
+    padding: 10px;
+  }
+  
+  .trajets {
+    margin-top: 1rem;
+  }
 }

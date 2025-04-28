@@ -46,8 +46,28 @@ function postMoteurs(moteurs) {
   .then(response => {
       if (response.ok) {
           console.log("Command sent successfully:", moteurs);
+          document.getElementById("message").innerHTML = `Statut: ${JSON.stringify(moteurs)}`;
       } else {
           console.error("Error sending command:", response.status, response.statusText);
+          document.getElementById("message").innerHTML = `Erreur: ${response.status} ${response.statusText} Voir la console pour plus de détails`;
+      }
+  })
+  .catch(error => {
+      console.error("Network error or invalid URL:", error);
+      document.getElementById("message").innerHTML = `Erreur réseau: ${error} Voir la console pour plus de détails`;
+  });
+}
+function postTrajectoire(trajectoire) {
+  fetch("http://192.168.4.163:5000/trajectoire", {  // <-- updated IP here
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(trajectoire),
+  })
+  .then(response => {
+      if (response.ok) {
+          console.log("Trajectoire sent successfully:", trajectoire);
+      } else {
+          console.error("Error sending trajectoire:", response.status, response.statusText);
       }
   })
   .catch(error => {
@@ -57,14 +77,73 @@ function postMoteurs(moteurs) {
 
 
 
+
+
 // Handle OpenCV toggle
 function onToggleOpenCv() {
   const openCvSwitch = document.getElementById("openCvSwitch");
-  if (openCvSwitch.checked) {
-    document.getElementsByClassName("live-camera")[0].style.display =
-      "block";
+  const liveCamera = document.getElementsByClassName("live-camera")[0];
+  
+  if (openCvSwitch && liveCamera) {
+    if (openCvSwitch.checked) {
+      liveCamera.style.display = "block";
+    } else {
+      liveCamera.style.display = "none";
+    }
   } else {
-    document.getElementsByClassName("live-camera")[0].style.display =
-      "none";
+    console.error("Element with ID 'openCvSwitch' or class 'live-camera' not found.");
   }
+}
+class Trajectoire {
+  constructor(...steps) {
+    // If steps are simple strings, convert them to objects with a default duration
+    this.steps = steps.map(step => {
+      if (typeof step === 'string') {
+        return { action: step, duration: 500 }; // Default 500ms duration
+      }
+      return step;
+    });
+  }
+}
+
+// Usage example with mixed format:
+function onClickTrajet1() {
+  const trajectoire = new Trajectoire(
+    "enAvant", 
+    {action: "Avant", duration: 1000},  // Move forward for 1 second
+    "enAvant", 
+    { action: "Droite", duration: 1000 },  // Turn right for 1 second
+    "enAvant", 
+    "enAvant"
+  );
+  postTrajectoire(trajectoire);
+}
+
+function onClickTrajet2() {
+  const trajectoire = new Trajectoire(
+    "enAvant", 
+    "enAvant", 
+    { action: "Gauche", duration: 1000 },  // Turn left for 1 second
+    "enArriere", 
+    "enArriere"
+  );
+  postTrajectoire(trajectoire);
+}
+
+function onClickTrajet3() {
+  const trajectoire = new Trajectoire(
+    "enAvant", 
+    "enAvant", 
+    {
+      action: "Droite", 
+      duration: 1000  // Turn right for 1 second
+    },  
+    "enAvant",
+    "enAvant",
+    { action: "Gauche", duration: 1000 },  // Turn left for 1 second
+    "enAvant",
+    "enAvant",
+    { action: "Gauche", duration: 1000 },  // Turn left for 1 second
+  );
+  postTrajectoire(trajectoire);
 }
