@@ -158,73 +158,149 @@ def post_moteurs():
         stop()
    
     return "Command received"
-   
+@app.route('/start_ball_following', methods=['POST'])
+def start_ball_following():
+    global ball_following_thread
+    if ball_following_thread is None or not ball_following_thread.is_alive():
+        ball_following_thread = threading.Thread(target=ball_following, daemon=True)
+        ball_following_thread.start()
+        return "Ball following started", 200
+    return "Ball following is already running", 400
 
-@app.route('/camera')
-def get_camera():
-   ret, frame = cap.read()
-   if not ret:
-    return "Camera error", 500
+@app.route('/stop_ball_following', methods=['POST'])
+def stop_ball_following():
+    global ball_following_thread
+    if ball_following_thread is not None and ball_following_thread.is_alive():
+        stop()  # This stops the motors, effectively halting the movement.
+        ball_following_thread = None  # Reset the thread reference
+        return "Ball following stopped", 200
+    return "Ball following is not running", 400
 
-   _, buffer = cv2.imencode('.jpg', frame)
-   response = flask.make_response(buffer.tobytes())
-   response.headers.set('Content-Type', 'image/jpeg')
-   return response
+# Ball detection and following logic
+def filter_contours(contours):
+    best_circle = None
+    best_score = 0
 
-    # === OpenCV Ball Detection Thread ===
-def detect_red_ball(frame):
-   lower_green = np.array([10, 250, 100])
-   upper_green = np.array([50, 120, 0])
-   hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-   mask = cv2.inRange(hsv, lower_green, upper_green)
-   contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < 400:
+            continue
 
-   if contours:
-       largest = max(contours, key=cv2.contourArea)
-       (x, y), radius = cv2.minEnclosingCircle(largest)
-       return (int(x), int(y)), int(radius)
-   return None, None
+        ((cx, cy), radius) = cv2.minEnclosingCircle(contour)
+        if radius < 10 or radius > 100:
+            continue
 
-def open_cv_loop():
+        perimeter = cv2.arcLength(contour, True)
+        if perimeter == 0:
+            continue
+
+        circularity = 4 * np.pi * area / (perimeter * perimeter)
+        score = area * (circularity ** 1.5)
+
+        if score > best_score:
+            best_score = score
+            best_circle = (int(cx), int(cy), int(radius))
+
+    return [best_circle] if best_circle else []
+
+def detect_orange_ball_on_frame(frame):
+    lower_orange = np.array([0, 68, 160])
+    upper_orange = np.array([20, 255, 255])
+
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask_orange = cv2.inRange(hsv, lower_orange, upper_orange)
+
+    lower_skin = np.array([0, 20, 60])
+    upper_skin = np.array([20, 170, 255])
+    mask_skin = cv2.inRange(hsv, lower_skin, upper_skin)
+    mask = cv2.bitwise_and(mask_orange, cv2.bitwise_not(mask_skin))
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.GaussianBlur(mask, (5, 5), 0)
+
+    contours, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    circles = filter_contours(contours)
+    return circles
+
+def ball_following():
+    global previous, lostCount
+
+    cap = cv2.VideoCapture(0)
+    FRAME_CENTER_X = 320
+    CENTER_THRESHOLD = 50
+
     previous = "nothing"
     lostCount = 0
 
     while True:
         ret, frame = cap.read()
         if not ret:
-            continue
+            break
 
-        center, radius = detect_red_ball(frame)
-        if center:
-            cv2.circle(frame, center, radius, (0, 255, 0), 2)
-            if center[0] > 300:
+        circles = detect_orange_ball_on_frame(frame)
+
+        if circles:
+            x, y, radius = circles[0]
+            cv2.circle(frame, (x, y), radius, (0, 255, 0), 2)
+            print(f"Ball center: {x},{y} radius: {radius}")
+            lostCount = 0
+
+            if x > FRAME_CENTER_X + CENTER_THRESHOLD:
+                print("La balle est à droite → tourne à droite")
                 droite()
+                time.sleep(0.5) # wait for the camera to adjust to the new position before continuing
                 previous = "droite"
-            elif center[0] < 200:
+            elif x < FRAME_CENTER_X - CENTER_THRESHOLD:
+                print("La balle est à gauche → tourne à gauche")
                 gauche()
+                time.sleep(0.5) # wait for the camera to adjust to the new position before continuing
                 previous = "gauche"
             else:
+                print("Balle centrée → avance")
                 enAvant()
-            lostCount = 0
-        elif previous == "gauche" and lostCount < 100:
-            droite()
-            lostCount += 1
-        elif previous == "droite" and lostCount < 100:
-            gauche()
-            lostCount += 1
+                time.sleep(0.5) # wait for the camera to adjust to the new position before continuing
         else:
-            stop()
-        time.sleep(0.05)
+            if previous == "gauche" and lostCount < 100:
+                print("Balle perdue, tourne à droite pour retrouver")
+                droite()
+                time.sleep(0.5) # wait for the camera to adjust to the new position before continuing
+                lostCount += 1
+            elif previous == "droite" and lostCount < 100:
+                print("Balle perdue, tourne à gauche pour retrouver")
+                gauche()
+                time.sleep(0.5) # wait for the camera to adjust to the new position before continuing
+                lostCount += 1
+            else:
+                print("Impossible de retrouver, stop")
+                stop()
 
-# === Camera Capture ===
-cap = cv2.VideoCapture(0)
+        cv2.imshow('Ball Following', frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    stop()
+    cap.release()
+    cv2.destroyAllWindows()
 
 # === Graceful Shutdown ===
 def cleanup():
     print("Cleaning up...")
     stop()
     GPIO.cleanup()
-    cap.release()
+    try:
+        conn = sqlite3.connect('logging.db')
+        conn.close()
+    except:
+        pass
+
+atexit.register(cleanup)
+# === Graceful Shutdown ===
+def cleanup():
+    print("Cleaning up...")
+    stop()
+    GPIO.cleanup()
     cv2.destroyAllWindows()
 
 atexit.register(cleanup)

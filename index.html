@@ -8,8 +8,15 @@
     <script src="script/script.js"></script>
   </head>
   <body>
+    <div class="theme-toggle">
+      <label class="switch">
+        <input type="checkbox" id="themeSwitch" onchange="toggleTheme()" />
+        <span class="slider"></span>
+      </label>
+    </div>
     <h1>Contrôle du Robot - Lab 5</h1>
     <p id="message"> En attente de commandes ... </p>
+    
     
     <div class="trajets">
       <button onclick="onClickTrajet1()">
@@ -22,9 +29,9 @@
         Trajet 3
       </button>
     </div>
-
     <!-- Control Buttons -->
     <div class="control-container">
+      
       <div class="empty"></div>
       <button onclick="onClickAvancer()">
         <svg
